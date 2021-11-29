@@ -28,6 +28,7 @@ class ImagePlot(pg.GraphicsLayoutWidget):
 
     def __init__(self, use_roi=False, movable_roi=True):
         self.pti = 0
+        self.image = []
 
         super(ImagePlot, self).__init__()
 
@@ -65,9 +66,13 @@ class ImagePlot(pg.GraphicsLayoutWidget):
 
         # pg.ImageItem.__init__ method takes input as an image array
         if isinstance(image, str):
-            image = io.imread(image_path)
+            img = io.imread(image, as_gray=True)
+            if img.dtype != np.uint8:
+                img = np.uint8(255/np.max(img) * img)
+            image = img
 
         if size is not None:
+            self.image = image
             image = transform.resize(image, size)
 
         self.image_item = pg.ImageItem(image)
@@ -82,13 +87,18 @@ class ImagePlot(pg.GraphicsLayoutWidget):
         self.sigKeyPress.emit(event)
 
 
+    def mouseDoubleClickEvent(self, event):
+        point = self.p1.vb.mapSceneToView(event.pos()) # get the point clicked
+        # Get pixel position of the mouse click
+        x, y = int(point.x()), int(point.y())
+        self.points[self.pti, :] = [x, y]
+        self.setPoints()
+        super().mouseDoubleClickEvent(event)
+
     def mousePressEvent(self, event):
         point = self.p1.vb.mapSceneToView(event.pos()) # get the point clicked
         # Get pixel position of the mouse click
         x, y = int(point.x()), int(point.y())
-        if event.button() == 4:
-            self.points[self.pti, :] = [x, y]
-            self.setPoints()
         super().mousePressEvent(event)
         ev = MouseEvent(event.button(), x, y)
         self.sigMouseClicked.emit(event)
