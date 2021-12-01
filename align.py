@@ -77,7 +77,7 @@ def save_csv(csv_fname):
     for i in range(2):
         pts[i,:,:] = image_plot[i].points
         image_plot[i].setPoints()
-    [c_pos, c_size] = get_crop(image_plot[2])
+    [c_pos, c_size] = image_plot[2].getCrop()
 
     with open(csv_fname, mode='w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=',')
@@ -85,28 +85,28 @@ def save_csv(csv_fname):
         for pt in range(5):
             csv_writer.writerow([pts[0, pt, 0], pts[0, pt, 1], pts[1, pt, 0], pts[1, pt, 1]])
 
-def cropnsave(fname, img, c_pos, c_size):
-    if fname is None:
-        print('Image name not defined, cannot save')
-        return 0
-    if int(c_pos[1] + c_size[0]) > img.shape[0] or int(c_pos[0] + c_size[1]) > img.shape[1]:
-        print(f'Oversized crop, adding black border to {fname}')
-        matt = np.zeros((int(c_pos[1] + c_size[0]), int(c_pos[0] + c_size[1])), dtype=np.uint8)
-        matt[:img.shape[0], :img.shape[1]] = img[:matt.shape[0], :matt.shape[1]]
-        # NOTE: you definitely could use something other than qt as your export plugin, I found that the default was some 14x slower
-        io.imsave(fname, matt[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
-                                            int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
-    else:
-        io.imsave(fname, img[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
-                                            int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
+#def cropnsave(fname, img, c_pos, c_size):
+#    if fname is None:
+#        print('Image name not defined, cannot save')
+#        return 0
+#    if int(c_pos[1] + c_size[0]) > img.shape[0] or int(c_pos[0] + c_size[1]) > img.shape[1]:
+#        print(f'Oversized crop, adding black border to {fname}')
+#        matt = np.zeros((int(c_pos[1] + c_size[0]), int(c_pos[0] + c_size[1])), dtype=np.uint8)
+#        matt[:img.shape[0], :img.shape[1]] = img[:matt.shape[0], :matt.shape[1]]
+#        # NOTE: you definitely could use something other than qt as your export plugin, I found that the default was some 14x slower
+#        io.imsave(fname, matt[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
+#                                            int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
+#    else:
+#        io.imsave(fname, img[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
+#                                            int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
 
-def get_crop(plot):
-    pos = np.array([plot.roi.pos().x(), plot.roi.pos().y()])
-    dimensions = np.array([plot.roi.size().x(), plot.roi.size().y()])
-    return [pos, dimensions]
+# def get_crop(plot):
+#     pos = np.array([plot.roi.pos().x(), plot.roi.pos().y()])
+#     dimensions = np.array([plot.roi.size().x(), plot.roi.size().y()])
+#     return [pos, dimensions]
 
 def key_press(event):
-    global align, raw
+#    global align, raw
 
     # Loads points
     if event.text() == 'l':
@@ -119,19 +119,19 @@ def key_press(event):
 
     # Saves the selected points
     if event.text() == 'p':
-        if PTS_CSV_SAVE is None:
-            PTS_CSV_SAVE = QFileDialog.getSaveFileName(win, 'Save file', '.')[0]
-            save_csv(PTS_CSV_SAVE)
+        if paths.PTS_CSV_SAVE is None:
+            paths.PTS_CSV_SAVE = QFileDialog.getSaveFileName(win, 'Save file', '.')[0]
+            save_csv(paths.PTS_CSV_SAVE)
         else:
-            save_csv(PTS_CSV_SAVE)
+            save_csv(paths.PTS_CSV_SAVE)
 
     # Opens a file
     elif event.text() == 'o':
         paths.RAW_PATH = QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]
-        raw = io.imread(paths.RAW_PATH, as_gray=True)
-        if raw.dtype != np.uint8:
-            raw = np.uint8(255/np.max(raw) * raw)
-        image_plot[1].setImage(raw)
+        #raw = io.imread(paths.RAW_PATH, as_gray=True)
+        #if raw.dtype != np.uint8:
+        #    raw = np.uint8(255/np.max(raw) * raw)
+        image_plot[1].setImage(paths.RAW_PATH)
         paths.RAW_PATH_SAVE = None
         paths.PTS_CSV_SAVE = None
 
@@ -144,7 +144,7 @@ def key_press(event):
         pts = np.zeros((2, 5, 2))
         for i in range(2):
             pts[i, :, :] = image_plot[i].points
-        [c_pos, c_size] = get_crop(image_plot[2])
+        [c_pos, c_size] = image_plot[2].getCrop()
 
         non0_pts = (pts != 0)
         selected_pts = np.logical_or(non0_pts[:,:,0], non0_pts[:,:,1])
@@ -152,37 +152,45 @@ def key_press(event):
         
         ref_pts = pts[0, overlapping]
         trans_pts = pts[1, overlapping]
+        print(image_plot[0].image.shape[::-1])
 
         if np.sum(overlapping) > 2:
             print(f"Using {np.sum(overlapping)} point alignment...")
-            align = transform_5pt(image_plot[0].image, ref_pts, trans_pts, (trace.shape[1], trace.shape[0]))
+            #align = transform_5pt(image_plot[0].image, ref_pts, trans_pts, (image_plot.image.shape[1], image_plot[0].image.shape[0]))
+            align = transform_5pt(image_plot[1].image, ref_pts, trans_pts, \
+                    image_plot[0].image.shape[::-1])
         elif np.sum(overlapping) == 2:
             print("Warning: Using 2 point alignment (suboptimal)...")
-            align = transform_2pt(raw, ref_pts, trans_pts, (trace.shape[1], trace.shape[0]))
+            align = transform_2pt(image_plot[1].image, ref_pts, trans_pts, image_plot[0].image.shape[::-1])
         elif np.sum(overlapping) < 2:
             print("Not enough valid points selected")
             return 0
 
         # The fused image on the right:
-        fuse = np.zeros((align.shape[0], align.shape[1], 3))
-        fuse[:,:,:] = np.dstack((align,align,align))
-        fuse[trace == 0, 0] = 255
-        fuse[trace == 0, 1] = 0
-        fuse[trace == 0, 2] = 0
-        image_plot[2].setImage(fuse)
+        image_plot[2].setImage(align, disp=False)
+        image_plot[2].overlayImage(image_plot[0].image)
         image_plot[2].roi.setSize(pg.Point(c_size[0], c_size[1]))
+#        fuse = np.zeros((align.shape[0], align.shape[1], 3))
+#        fuse[:,:,:] = np.dstack((align,align,align))
+#        fuse[image_plot[0].image == 0, 0] = 255
+#        fuse[image_plot[0].image == 0, 1] = 0
+#        fuse[image_plot[0].image == 0, 2] = 0
+#        image_plot[2].setImage(fuse)
+#        image_plot[2].roi.setSize(pg.Point(c_size[0], c_size[1]))
 
     # Saves aligned images
     elif event.text() == 's':
-        [c_pos, c_size] = get_crop(image_plot[2])
+        [c_pos, c_size] = image_plot[2].getCrop()
         if paths.RAW_PATH_SAVE is None:
             paths.RAW_PATH_SAVE = QFileDialog.getSaveFileName(win, 'Save file', '.')[0]
             #RAW_PATH_SAVE = QFileDialog.getSaveFileName(central_win, 'Save file', '.')[0]
             if paths.PTS_CSV_SAVE is None:
-                paths.PTS_CSV_SAVE = f'{RAW_PATH_SAVE[:-4]}.csv'
+                paths.PTS_CSV_SAVE = f'{paths.RAW_PATH_SAVE[:-4]}.csv'
             
-        cropnsave(paths.RAW_PATH_SAVE, align, c_pos, c_size)
-        cropnsave(paths.TRACE_PATH_SAVE, trace, c_pos, c_size)
+        image_plot[2].saveImage(paths.RAW_PATH_SAVE, c_pos, c_size)
+        image_plot[0].saveImage(paths.TRACE_PATH_SAVE, c_pos, c_size)
+#        cropnsave(paths.RAW_PATH_SAVE, align, c_pos, c_size)
+#        cropnsave(paths.TRACE_PATH_SAVE, trace, c_pos, c_size)
       
 class Window(QMainWindow):
     sigKeyPress = pyqtSignal(object)
@@ -199,10 +207,12 @@ class Window(QMainWindow):
         fileMenu = menu.addMenu("&File")
 
         openRawAction = QAction("&Open Image", self)
-        openRawAction.setData("blechelshkj")
         openRawAction.triggered.connect(self.openRaw)
         fileMenu.addAction(openRawAction)
-        fileMenu.addAction("Open Tracing")
+
+        openTraceAction = QAction("&Open Tracing", self)
+        openTraceAction.triggered.connect(self.openTrace)
+        fileMenu.addAction(openTraceAction)
         fileMenu.addAction("Open Points CSV")
         fileMenu.addAction("Save Alignment...")
         fileMenu.addAction("Save Points to CSV...")
