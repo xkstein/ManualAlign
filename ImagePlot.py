@@ -23,12 +23,11 @@ pg.setConfigOption('foreground', 'w')
 
 class ImagePlot(pg.GraphicsLayoutWidget):
     sigKeyPress = pyqtSignal(object)
-    sigMouseClicked = pyqtSignal(object)
     color_dict = {'r':(255,0,0), 'g':(0,255,0),'b':(0,0,255),'p':(255,0,255),'y':(255,255,0)}
 
     def __init__(self, use_roi=False, movable_roi=True):
         self.pti = 0
-        self.image = []
+        self.image = np.array([])
 
         super(ImagePlot, self).__init__()
 
@@ -58,12 +57,7 @@ class ImagePlot(pg.GraphicsLayoutWidget):
             self.p1.addItem(self.roi)
 
 
-    def setImage(self, image, size=None):
-        self.p1.clear()
-        self.p1.addItem(self.scatterItem)
-        if self.use_roi:
-            self.p1.addItem(self.roi)
-
+    def setImage(self, image, size=None, disp=True):
         # pg.ImageItem.__init__ method takes input as an image array
         if isinstance(image, str):
             img = io.imread(image, as_gray=True)
@@ -72,14 +66,40 @@ class ImagePlot(pg.GraphicsLayoutWidget):
             image = img
 
         if size is not None:
-            self.image = image
             image = transform.resize(image, size)
 
-        self.image_item = pg.ImageItem(image)
-        self.image_item.setOpts(axisOrder='row-major')
-        self.p1.getViewBox().setAspectLocked(True, ratio=(image.shape[1]/image.shape[0]))
-        self.p1.addItem(self.image_item)
+        self.image = image
+        print(self.image.shape)
 
+        if disp:
+            self.p1.clear()
+            self.p1.addItem(self.scatterItem)
+            if self.use_roi:
+                self.p1.addItem(self.roi)
+            self.image_item = pg.ImageItem(image)
+            self.image_item.setOpts(axisOrder='row-major')
+            self.p1.getViewBox().setAspectLocked(True, ratio=(image.shape[1]/image.shape[0]))
+            self.p1.addItem(self.image_item)
+
+    def overlayImage(self, image):
+        # TODO: Add other color/opacity support
+        self.p1.clear()
+        self.p1.addItem(self.scatterItem)
+        if self.use_roi:
+            self.p1.addItem(self.roi)
+
+        fuse = np.zeros((self.image.shape[0], self.image.shape[1], 3))
+        fuse[:,:,:] = np.dstack((self.image,self.image,self.image))
+        fuse[image == 0, 0] = 255
+        fuse[image == 0, 1] = 0
+        fuse[image == 0, 2] = 0
+#        image_plot[2].setImage(fuse)
+#        image_plot[2].roi.setSize(pg.Point(c_size[0], c_size[1]))
+
+        self.image_item = pg.ImageItem(fuse)
+        self.image_item.setOpts(axisOrder='row-major')
+        self.p1.getViewBox().setAspectLocked(True, ratio=(fuse.shape[1]/fuse.shape[0]))
+        self.p1.addItem(self.image_item)
 
     def keyPressEvent(self, event):
         if event.text().isdigit() and int(event.text()) <= 5 and int(event.text()) > 0:
@@ -95,14 +115,6 @@ class ImagePlot(pg.GraphicsLayoutWidget):
         self.setPoints()
         super().mouseDoubleClickEvent(event)
 
-    def mousePressEvent(self, event):
-        point = self.p1.vb.mapSceneToView(event.pos()) # get the point clicked
-        # Get pixel position of the mouse click
-        x, y = int(point.x()), int(point.y())
-        super().mousePressEvent(event)
-        ev = MouseEvent(event.button(), x, y)
-        self.sigMouseClicked.emit(event)
-
     def setPoints(self):
         spots = []
         ind = 0
@@ -113,7 +125,28 @@ class ImagePlot(pg.GraphicsLayoutWidget):
                 spots.append(spot)
             ind += 1
         self.scatterItem.setData(spots=spots)
-        
+
+    def getCrop(self):
+        pos = np.array([self.roi.pos().x(), self.roi.pos().y()])
+        dimensions = np.array([self.roi.size().x(), self.roi.size().y()])
+        return [pos, dimensions]
+
+    def saveImage(self, fname, c_pos, c_size):
+        if fname is None:
+            print('Image name not defined, cannot save')
+            return 0
+        if int(c_pos[1] + c_size[0]) > self.image.shape[0] or int(c_pos[0] + c_size[1]) > self.image.shape[1]:
+            print(f'Oversized crop, adding black border to {fname}')
+            print(self.image.shape)
+            matt = np.zeros((int(c_pos[1] + c_size[0]), int(c_pos[0] + c_size[1])), dtype=np.uint8)
+            matt[:self.image.shape[0], :self.image.shape[1]] = self.image[:matt.shape[0], :matt.shape[1]]
+            # NOTE: you definitely could use something other than qt as your export plugin, I found that the default was some 14x slower
+            io.imsave(fname, matt[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
+                                                int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
+        else:
+            io.imsave(fname, self.image[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
+                                                int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
+            
 
 if __name__ == "__main__":
 
