@@ -93,8 +93,6 @@ class ImagePlot(pg.GraphicsLayoutWidget):
         fuse[image == 0, 0] = 255
         fuse[image == 0, 1] = 0
         fuse[image == 0, 2] = 0
-#        image_plot[2].setImage(fuse)
-#        image_plot[2].roi.setSize(pg.Point(c_size[0], c_size[1]))
 
         self.image_item = pg.ImageItem(fuse)
         self.image_item.setOpts(axisOrder='row-major')
@@ -105,7 +103,6 @@ class ImagePlot(pg.GraphicsLayoutWidget):
         if event.text().isdigit() and int(event.text()) <= 5 and int(event.text()) > 0:
             self.pti = int(event.text()) - 1
         self.sigKeyPress.emit(event)
-
 
     def mouseDoubleClickEvent(self, event):
         point = self.p1.vb.mapSceneToView(event.pos()) # get the point clicked
