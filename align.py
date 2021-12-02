@@ -5,7 +5,8 @@
 # make an object that handles all the io, but I kinda want to refrain for like just making this OO for the sake of OO
 
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QFileDialog, QAction
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QGridLayout, QFileDialog, QAction
 from ImagePlot import ImagePlot
 from transformations import *
 import pyqtgraph as pg
@@ -36,18 +37,6 @@ class FilePaths:
     PTS_CSV_SAVE: str = None
 
 paths = FilePaths(TRACE_PATH, TRACE_PATH_SAVE, RAW_PATH, RAW_PATH_SAVE, PTS_CSV_READ, PTS_CSV_SAVE)
-
-#raw = io.imread('roitest.png', as_gray=True)
-raw = io.imread(paths.RAW_PATH, as_gray=True)
-if raw.dtype != np.uint8:
-    raw = np.uint8(255/np.max(raw) * raw)
-trace = io.imread(paths.TRACE_PATH, as_gray=True)
-if trace.dtype != np.uint8:
-    trace = np.uint8(255/np.max(trace) * trace)
-
-align = []
-
-#pts = np.zeros((2, 5, 2))
 
 def read_csv(csv_fname):
     print(f'Loading points from {csv_fname}')
@@ -85,29 +74,7 @@ def save_csv(csv_fname):
         for pt in range(5):
             csv_writer.writerow([pts[0, pt, 0], pts[0, pt, 1], pts[1, pt, 0], pts[1, pt, 1]])
 
-#def cropnsave(fname, img, c_pos, c_size):
-#    if fname is None:
-#        print('Image name not defined, cannot save')
-#        return 0
-#    if int(c_pos[1] + c_size[0]) > img.shape[0] or int(c_pos[0] + c_size[1]) > img.shape[1]:
-#        print(f'Oversized crop, adding black border to {fname}')
-#        matt = np.zeros((int(c_pos[1] + c_size[0]), int(c_pos[0] + c_size[1])), dtype=np.uint8)
-#        matt[:img.shape[0], :img.shape[1]] = img[:matt.shape[0], :matt.shape[1]]
-#        # NOTE: you definitely could use something other than qt as your export plugin, I found that the default was some 14x slower
-#        io.imsave(fname, matt[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
-#                                            int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
-#    else:
-#        io.imsave(fname, img[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
-#                                            int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
-
-# def get_crop(plot):
-#     pos = np.array([plot.roi.pos().x(), plot.roi.pos().y()])
-#     dimensions = np.array([plot.roi.size().x(), plot.roi.size().y()])
-#     return [pos, dimensions]
-
 def key_press(event):
-#    global align, raw
-
     # Loads points
     if event.text() == 'l':
         [pts, c_pos, c_size] = read_csv(PTS_CSV_READ)
@@ -128,9 +95,6 @@ def key_press(event):
     # Opens a file
     elif event.text() == 'o':
         paths.RAW_PATH = QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]
-        #raw = io.imread(paths.RAW_PATH, as_gray=True)
-        #if raw.dtype != np.uint8:
-        #    raw = np.uint8(255/np.max(raw) * raw)
         image_plot[1].setImage(paths.RAW_PATH)
         paths.RAW_PATH_SAVE = None
         paths.PTS_CSV_SAVE = None
@@ -156,7 +120,6 @@ def key_press(event):
 
         if np.sum(overlapping) > 2:
             print(f"Using {np.sum(overlapping)} point alignment...")
-            #align = transform_5pt(image_plot[0].image, ref_pts, trans_pts, (image_plot.image.shape[1], image_plot[0].image.shape[0]))
             align = transform_5pt(image_plot[1].image, ref_pts, trans_pts, \
                     image_plot[0].image.shape[::-1])
         elif np.sum(overlapping) == 2:
@@ -170,13 +133,6 @@ def key_press(event):
         image_plot[2].setImage(align, disp=False)
         image_plot[2].overlayImage(image_plot[0].image)
         image_plot[2].roi.setSize(pg.Point(c_size[0], c_size[1]))
-#        fuse = np.zeros((align.shape[0], align.shape[1], 3))
-#        fuse[:,:,:] = np.dstack((align,align,align))
-#        fuse[image_plot[0].image == 0, 0] = 255
-#        fuse[image_plot[0].image == 0, 1] = 0
-#        fuse[image_plot[0].image == 0, 2] = 0
-#        image_plot[2].setImage(fuse)
-#        image_plot[2].roi.setSize(pg.Point(c_size[0], c_size[1]))
 
     # Saves aligned images
     elif event.text() == 's':
@@ -199,7 +155,29 @@ class Window(QMainWindow):
         self.setWindowTitle("Manual Align")
 
         self.central_win = QWidget()
-        self.layout = QHBoxLayout()
+        self.layout = QGridLayout()
+        self.layout.setContentsMargins(0,0,0,0)
+        self.layout.setVerticalSpacing(0)
+        self.layout.setHorizontalSpacing(0)
+
+        self.image_plot = []
+
+        plot = ImagePlot()
+        plot.sigKeyPress.connect(key_press)
+        self.layout.addWidget(plot, 0, 0, 1, 1)
+        self.image_plot.append(plot)
+
+        plot = ImagePlot()
+        plot.sigKeyPress.connect(key_press)
+        self.layout.addWidget(plot, 1, 0, 1, 1)
+        self.image_plot.append(plot)
+
+        plot = ImagePlot(use_roi = True)
+        plot.sigKeyPress.connect(key_press)
+        self.layout.addWidget(plot, 0, 1, 2, 2)
+        self.image_plot.append(plot)
+#        self.layout.setColumnStretch(1, 0)
+        #self.layout = QHBoxLayout()
         self.central_win.setLayout(self.layout)
         self.setCentralWidget(self.central_win)
 
@@ -207,41 +185,89 @@ class Window(QMainWindow):
         fileMenu = menu.addMenu("&File")
 
         openRawAction = QAction("&Open Image", self)
+        openRawAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_O))
         openRawAction.triggered.connect(self.openRaw)
         fileMenu.addAction(openRawAction)
 
         openTraceAction = QAction("&Open Tracing", self)
         openTraceAction.triggered.connect(self.openTrace)
         fileMenu.addAction(openTraceAction)
-        fileMenu.addAction("Open Points CSV")
-        fileMenu.addAction("Save Alignment...")
-        fileMenu.addAction("Save Points to CSV...")
 
-    def addWidget(self, widget):
-        self.layout.addWidget(widget)
+        openPointsAction = QAction("&Open Points CSV", self)
+        openPointsAction.triggered.connect(self.openPoints)
+        fileMenu.addAction(openPointsAction)
+
+        saveAction = QAction("&Save Aligned Image...", self)
+        saveAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_S))
+        saveAction.triggered.connect(self.saveImage)
+        fileMenu.addAction(saveAction)
+
+        savePointsAction = QAction("&Save Points CSV...", self)
+        savePointsAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_P))
+        savePointsAction.triggered.connect(self.savePoints)
+        fileMenu.addAction(savePointsAction)
+
+    def setLayout(self):
+        self.central_win.setLayout(self.layout)
+        self.setCentralWidget(self.central_win)
 
     def openRaw(self):
         paths.RAW_PATH = QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]
         image_plot[1].setImage(paths.RAW_PATH)
+        paths.PTS_CSV_SAVE = None
+        paths.RAW_PATH_SAVE = None
 
     def openTrace(self):
         paths.TRACE_PATH = QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]
         image_plot[0].setImage(paths.TRACE_PATH)
 
+    def openPoints(self):
+        paths.PTS_CSV_READ = QFileDialog.getOpenFileName(win, 'Open file', '.', "CSV File(*.csv)")[0]
+        [pts, c_pos, c_size] = read_csv(paths.PTS_CSV_READ)
+        for i in [0, 1]:
+            image_plot[i].points = pts[i, :, :]
+            image_plot[i].setPoints()
+        image_plot[2].roi.setPos(c_pos[0], c_pos[1], update=False)
+        image_plot[2].roi.setSize(c_size)
+    
+    def saveImage(self):
+        [c_pos, c_size] = image_plot[2].getCrop()
+        if paths.RAW_PATH_SAVE is None:
+            paths.RAW_PATH_SAVE = QFileDialog.getSaveFileName(win, 'Save file', '.')[0]
+            #RAW_PATH_SAVE = QFileDialog.getSaveFileName(central_win, 'Save file', '.')[0]
+            if paths.PTS_CSV_SAVE is None:
+                paths.PTS_CSV_SAVE = f'{paths.RAW_PATH_SAVE[:-4]}.csv'
+            
+        image_plot[2].saveImage(paths.RAW_PATH_SAVE, c_pos, c_size)
+        image_plot[0].saveImage(paths.TRACE_PATH_SAVE, c_pos, c_size)
+
+    def savePoints(self):
+        pass
+        return 0
+
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 app = QApplication([])
-#win = QMainWindow()
 win = Window()
 
-plot_has_roi=[False, False, True]
-image_plot = []
-
-for i, use_roi in enumerate(plot_has_roi):
-    plot = ImagePlot(use_roi = use_roi)
-    plot.sigKeyPress.connect(key_press)
-    win.addWidget(plot)
-    image_plot.append(plot)
-
+#image_plot = []
+image_plot = win.image_plot
+#
+#plot = ImagePlot()
+#plot.sigKeyPress.connect(key_press)
+#win.layout.addWidget(plot, 0, 0, 1, 1)
+#image_plot.append(plot)
+#
+#plot = ImagePlot()
+#plot.sigKeyPress.connect(key_press)
+#win.layout.addWidget(plot, 1, 0, 1, 1)
+#image_plot.append(plot)
+#
+#plot = ImagePlot(use_roi = True)
+#plot.sigKeyPress.connect(key_press)
+#win.layout.addWidget(plot, 0, 1, 2, 2)
+#image_plot.append(plot)
+#
+#win.setLayout()
 image_plot[0].setImage(paths.TRACE_PATH)
 image_plot[1].setImage(paths.RAW_PATH)
 
