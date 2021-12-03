@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 
-# TODO:
-# Add commandline argument support for like all of the vars that need to be set up
-# make an object that handles all the io, but I kinda want to refrain for like just making this OO for the sake of OO
-
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QGridLayout, QFileDialog, QAction
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QGridLayout, QFileDialog, QAction, QLineEdit, QLabel, QFormLayout
 from ImagePlot import ImagePlot
 from transformations import *
 import pyqtgraph as pg
@@ -18,12 +14,12 @@ import time
 import pdb
 from dataclasses import dataclass
 
-folder = 'images/2312/'
-TRACE_PATH =    f'{folder}trace_new_clean_2hr2312 numbered.png'
-TRACE_PATH_SAVE = f'{folder}aligned/2hr2312_trace.png'
-RAW_PATH =      f'{folder}2HR_Al_100nm_2312_F6_1.tif'
+folder = 'images/2530/'
+TRACE_PATH = None
+TRACE_PATH_SAVE = None
+RAW_PATH = None
 RAW_PATH_SAVE = None
-PTS_CSV_READ = f'{folder}aligned/2hr2312_1.csv'
+PTS_CSV_READ = None
 PTS_CSV_SAVE = None
 
 @dataclass
@@ -61,6 +57,10 @@ def read_csv(csv_fname):
     return [pts, c_pos, c_size]
 
 def save_csv(csv_fname):
+    if csv_fname is None:
+        print('CSV Points save path not defined')
+        return 0
+
     print(f'Saving points to {csv_fname}')
     pts = np.zeros((2, 5, 2))
     for i in range(2):
@@ -74,31 +74,8 @@ def save_csv(csv_fname):
         for pt in range(5):
             csv_writer.writerow([pts[0, pt, 0], pts[0, pt, 1], pts[1, pt, 0], pts[1, pt, 1]])
 
+# TODO: re-implement all of these functions as toolbar functions
 def key_press(event):
-    # Loads points
-    if event.text() == 'l':
-        [pts, c_pos, c_size] = read_csv(PTS_CSV_READ)
-        for i in [0, 1]:
-            image_plot[i].points = pts[i, :, :]
-            image_plot[i].setPoints()
-        image_plot[2].roi.setPos(c_pos[0], c_pos[1], update=False)
-        image_plot[2].roi.setSize(c_size)
-
-    # Saves the selected points
-    if event.text() == 'p':
-        if paths.PTS_CSV_SAVE is None:
-            paths.PTS_CSV_SAVE = QFileDialog.getSaveFileName(win, 'Save file', '.')[0]
-            save_csv(paths.PTS_CSV_SAVE)
-        else:
-            save_csv(paths.PTS_CSV_SAVE)
-
-    # Opens a file
-    elif event.text() == 'o':
-        paths.RAW_PATH = QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]
-        image_plot[1].setImage(paths.RAW_PATH)
-        paths.RAW_PATH_SAVE = None
-        paths.PTS_CSV_SAVE = None
-
     # Locks ROI
     elif event.text() == 'm':
         image_plot[2].roi.translatable = (image_plot[2].roi.translatable != True)
@@ -133,20 +110,6 @@ def key_press(event):
         image_plot[2].setImage(align, disp=False)
         image_plot[2].overlayImage(image_plot[0].image)
         image_plot[2].roi.setSize(pg.Point(c_size[0], c_size[1]))
-
-    # Saves aligned images
-    elif event.text() == 's':
-        [c_pos, c_size] = image_plot[2].getCrop()
-        if paths.RAW_PATH_SAVE is None:
-            paths.RAW_PATH_SAVE = QFileDialog.getSaveFileName(win, 'Save file', '.')[0]
-            #RAW_PATH_SAVE = QFileDialog.getSaveFileName(central_win, 'Save file', '.')[0]
-            if paths.PTS_CSV_SAVE is None:
-                paths.PTS_CSV_SAVE = f'{paths.RAW_PATH_SAVE[:-4]}.csv'
-            
-        image_plot[2].saveImage(paths.RAW_PATH_SAVE, c_pos, c_size)
-        image_plot[0].saveImage(paths.TRACE_PATH_SAVE, c_pos, c_size)
-#        cropnsave(paths.RAW_PATH_SAVE, align, c_pos, c_size)
-#        cropnsave(paths.TRACE_PATH_SAVE, trace, c_pos, c_size)
       
 class Window(QMainWindow):
     sigKeyPress = pyqtSignal(object)
@@ -160,24 +123,36 @@ class Window(QMainWindow):
         self.layout.setVerticalSpacing(0)
         self.layout.setHorizontalSpacing(0)
 
+
+        # Setting up the image plots
         self.image_plot = []
 
         plot = ImagePlot()
         plot.sigKeyPress.connect(key_press)
-        self.layout.addWidget(plot, 0, 0, 1, 1)
+        self.layout.addWidget(plot, 0, 0, 2, 1)
         self.image_plot.append(plot)
 
         plot = ImagePlot()
         plot.sigKeyPress.connect(key_press)
-        self.layout.addWidget(plot, 1, 0, 1, 1)
+        self.layout.addWidget(plot, 2, 0, 2, 1)
         self.image_plot.append(plot)
 
         plot = ImagePlot(use_roi = True)
         plot.sigKeyPress.connect(key_press)
-        self.layout.addWidget(plot, 0, 1, 2, 2)
+        self.layout.addWidget(plot, 0, 1, 4, 2)
         self.image_plot.append(plot)
 #        self.layout.setColumnStretch(1, 0)
         #self.layout = QHBoxLayout()
+
+        '''
+        # Setting up the plot file name selector thing
+        label1 = QLabel("Name")
+        edit1 = QLineEdit()
+        self.form = QFormLayout()
+        self.form.addRow(label1, edit1)
+        self.layout.addLayout(self.form, 3,1,2,1)
+        '''
+
         self.central_win.setLayout(self.layout)
         self.setCentralWidget(self.central_win)
 
@@ -195,12 +170,18 @@ class Window(QMainWindow):
 
         openPointsAction = QAction("&Open Points CSV", self)
         openPointsAction.triggered.connect(self.openPoints)
+        openPointsAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_L))
         fileMenu.addAction(openPointsAction)
 
         saveAction = QAction("&Save Aligned Image...", self)
         saveAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_S))
         saveAction.triggered.connect(self.saveImage)
         fileMenu.addAction(saveAction)
+
+        saveTraceAction = QAction("&Save Trace Aligned Image...", self)
+#        saveTraceAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_T))
+        saveTraceAction.triggered.connect(self.saveTrace)
+        fileMenu.addAction(saveTraceAction)
 
         savePointsAction = QAction("&Save Points CSV...", self)
         savePointsAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_P))
@@ -212,64 +193,64 @@ class Window(QMainWindow):
         self.setCentralWidget(self.central_win)
 
     def openRaw(self):
-        paths.RAW_PATH = QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]
-        image_plot[1].setImage(paths.RAW_PATH)
-        paths.PTS_CSV_SAVE = None
-        paths.RAW_PATH_SAVE = None
+        if select := QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]:
+            paths.RAW_PATH = select
+            image_plot[1].setImage(paths.RAW_PATH)
+            paths.PTS_CSV_SAVE = None
+            paths.RAW_PATH_SAVE = None
 
     def openTrace(self):
-        paths.TRACE_PATH = QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]
-        image_plot[0].setImage(paths.TRACE_PATH)
+        if select := QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]:
+            paths.TRACE_PATH = select
+            image_plot[0].setImage(paths.TRACE_PATH)
+            paths.TRACE_PATH_SAVE = None
 
     def openPoints(self):
-        paths.PTS_CSV_READ = QFileDialog.getOpenFileName(win, 'Open file', '.', "CSV File(*.csv)")[0]
-        [pts, c_pos, c_size] = read_csv(paths.PTS_CSV_READ)
-        for i in [0, 1]:
-            image_plot[i].points = pts[i, :, :]
-            image_plot[i].setPoints()
-        image_plot[2].roi.setPos(c_pos[0], c_pos[1], update=False)
-        image_plot[2].roi.setSize(c_size)
+        if select := QFileDialog.getOpenFileName(win, 'Open file', '.', "CSV File(*.csv)")[0]:
+            paths.PTS_CSV_READ = select
+            [pts, c_pos, c_size] = read_csv(paths.PTS_CSV_READ)
+            for i in [0, 1]:
+                image_plot[i].points = pts[i, :, :]
+                image_plot[i].setPoints()
+            image_plot[2].roi.setPos(c_pos[0], c_pos[1], update=False)
+            image_plot[2].roi.setSize(c_size)
     
     def saveImage(self):
         [c_pos, c_size] = image_plot[2].getCrop()
         if paths.RAW_PATH_SAVE is None:
-            paths.RAW_PATH_SAVE = QFileDialog.getSaveFileName(win, 'Save file', '.')[0]
-            #RAW_PATH_SAVE = QFileDialog.getSaveFileName(central_win, 'Save file', '.')[0]
-            if paths.PTS_CSV_SAVE is None:
-                paths.PTS_CSV_SAVE = f'{paths.RAW_PATH_SAVE[:-4]}.csv'
-            
+            if select := QFileDialog.getSaveFileName(win, 'Save Aligned Image', '.')[0]:
+                paths.RAW_PATH_SAVE = select
+                if paths.PTS_CSV_SAVE is None:
+                    paths.PTS_CSV_SAVE = f'{select[:-4]}.csv'
+
         image_plot[2].saveImage(paths.RAW_PATH_SAVE, c_pos, c_size)
+
+    def saveTrace(self):
+        [c_pos, c_size] = image_plot[2].getCrop()
+        if paths.TRACE_PATH_SAVE is None:
+            if select := QFileDialog.getSaveFileName(win, 'Save Aligned Tracing', '.')[0]:
+                paths.TRACE_PATH_SAVE = select
+            
         image_plot[0].saveImage(paths.TRACE_PATH_SAVE, c_pos, c_size)
 
     def savePoints(self):
-        pass
-        return 0
+        if paths.PTS_CSV_SAVE is None:
+            if select := QFileDialog.getSaveFileName(win, 'Save file', '.')[0]:
+                paths.PTS_CSV_SAVE = select
+        
+        save_csv(paths.PTS_CSV_SAVE)
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 app = QApplication([])
 win = Window()
 
-#image_plot = []
 image_plot = win.image_plot
-#
-#plot = ImagePlot()
-#plot.sigKeyPress.connect(key_press)
-#win.layout.addWidget(plot, 0, 0, 1, 1)
-#image_plot.append(plot)
-#
-#plot = ImagePlot()
-#plot.sigKeyPress.connect(key_press)
-#win.layout.addWidget(plot, 1, 0, 1, 1)
-#image_plot.append(plot)
-#
-#plot = ImagePlot(use_roi = True)
-#plot.sigKeyPress.connect(key_press)
-#win.layout.addWidget(plot, 0, 1, 2, 2)
-#image_plot.append(plot)
-#
-#win.setLayout()
-image_plot[0].setImage(paths.TRACE_PATH)
-image_plot[1].setImage(paths.RAW_PATH)
+
+if paths.TRACE_PATH is not None:
+    image_plot[0].setImage(paths.TRACE_PATH)
+
+if paths.RAW_PATH is not None:
+    image_plot[1].setImage(paths.RAW_PATH)
 
 # You can access points by accessing image_plot1.points
 win.show()

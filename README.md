@@ -1,3 +1,11 @@
+## To Do:
+- Add support for removing anchors
+- Move locking ROI to toolbar
+- Move aligning to toolbar
+
+
+---
+---
 # Controls
 | Input | Command |
 | ----- | ------- | 
@@ -40,3 +48,4 @@ There are basically two modes to this application (if you're aliging a set of im
 In 1 you need to change/set the region of the crop, but in mode 2 you don't want to touch the crop (so your images align)[^3]. If you're aligning a set of images to one tracing and you want them all to line up (like if you're doing some n-channel image process), you should only select the points on the tracing once. So after you align the first image, you should save those points and then load those when you align the next image (if you press `o`, you can open the next image)
 
 [^3]: Side note, your cropping is based off the hand tracing, and it is saved and loaded with the csv points.
+

@@ -69,7 +69,6 @@ class ImagePlot(pg.GraphicsLayoutWidget):
             image = transform.resize(image, size)
 
         self.image = image
-        print(self.image.shape)
 
         if disp:
             self.p1.clear()
@@ -134,7 +133,6 @@ class ImagePlot(pg.GraphicsLayoutWidget):
             return 0
         if int(c_pos[1] + c_size[0]) > self.image.shape[0] or int(c_pos[0] + c_size[1]) > self.image.shape[1]:
             print(f'Oversized crop, adding black border to {fname}')
-            print(self.image.shape)
             matt = np.zeros((int(c_pos[1] + c_size[0]), int(c_pos[0] + c_size[1])), dtype=np.uint8)
             matt[:self.image.shape[0], :self.image.shape[1]] = self.image[:matt.shape[0], :matt.shape[1]]
             # NOTE: you definitely could use something other than qt as your export plugin, I found that the default was some 14x slower
