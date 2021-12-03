@@ -4,4 +4,4 @@ __pycache__/
 images/
 venv/
 .DS_Store
-*/.DS_Store
+align.log

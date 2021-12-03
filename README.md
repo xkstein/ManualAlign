@@ -14,13 +14,13 @@
 # Controls
 | Input | Command |
 | ----- | ------- | 
-| `MIDDLE CLICK` | Select point |
+| `DOUBLE CLICK` | Select point |
 | `#1-5`         | Select marker index[^1] |
-| `l`            | Load points (reads from `PTS_CSV_READ`) |
-| `p`            | Save current point (saved to `PTS_CSV_SAVE`) |
-| `c`            | Compile and align images with selected points |
-| `o`            | Open a new raw image to edit[^2] |
-| `s`            | Save roi of aligned images |
+| `CMD-l`        | Load points (reads from `PTS_CSV_READ`) |
+| `CMD-p`        | Save current point (saved to `PTS_CSV_SAVE`) |
+| `a`            | Compile and align images with selected points |
+| `CMD-o`        | Open a new raw image to edit[^2] |
+| `CMD-s`        | Save roi of aligned images |
 | `m`            | Toggles movablility of roi (the little red square that shows up in the third window) |
 
 [^1]: **NOTE**: you have to left-click on the plot that you want to make this change in each time, its sort of an unfortunate thing, deciding on how to fix it
@@ -29,7 +29,7 @@
 ---
 
 # Configuration
-> Unfortunately, there are 6 variables that you kinda need to set (all the variables that the user needs to set are writted in all caps). 
+> You can set all of the image path things through the gui's toolbar now, which is kinda nice, or you can do it through the code if that's your thing
 
 `TRACE_PATH` - Path to the traced image
 
