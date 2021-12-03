@@ -24,7 +24,7 @@
 ---
 
 # Configuration
-> Unfortunately, there are 6 variables that you kinda need to set (all the variables that the user needs to set are writted in all caps). 
+> You can set all of the image path things through the gui's toolbar now, which is kinda nice, or you can do it through the code if that's your thing
 
 `TRACE_PATH` - Path to the traced image
 
