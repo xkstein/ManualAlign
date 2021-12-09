@@ -3,5 +3,4 @@ __pycache__/
 *.swp
 images/
 .DS_Store
-*/.DS_Store
 align.log
