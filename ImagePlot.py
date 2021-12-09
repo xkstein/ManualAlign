@@ -3,7 +3,7 @@ import sys
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout
 import pyqtgraph as pg
-from skimage import io, transform
+from skimage import io, transform, color
 import numpy as np
 from dataclasses import dataclass
 
@@ -60,7 +60,13 @@ class ImagePlot(pg.GraphicsLayoutWidget):
     def setImage(self, image, size=None, disp=True):
         # pg.ImageItem.__init__ method takes input as an image array
         if isinstance(image, str):
-            img = io.imread(image, as_gray=True)
+            img = io.imread(image)
+            if len(img.shape) > 2:
+                try:
+                    img = color.rgb2gray(img)
+                except ValueError:
+                    img = img[:,:,0]
+
             if img.dtype != np.uint8:
                 img = np.uint8(255/np.max(img) * img)
             image = img
@@ -127,20 +133,39 @@ class ImagePlot(pg.GraphicsLayoutWidget):
         dimensions = np.array([self.roi.size().x(), self.roi.size().y()])
         return [pos, dimensions]
 
-    def saveImage(self, fname, c_pos, c_size):
+    # TODO:
+    # Figure out a better way to do all of this cropping, obviously this is pretty suboptimal
+    # NOTE:
+    # You definitely could use something other than qt as your export plugin, I found that the 
+    # default was some 14x slower
+    def saveImage(self, fname, c_pos=None, c_size=None):
+        if c_pos is None or c_size is None:
+            [c_pos, c_size] = self.getCrop()
+
         if fname is None:
             print('Image name not defined, cannot save')
             return 0
-        if int(c_pos[1] + c_size[0]) > self.image.shape[0] or int(c_pos[0] + c_size[1]) > self.image.shape[1]:
-            print(f'Oversized crop, adding black border to {fname}')
-            matt = np.zeros((int(c_pos[1] + c_size[0]), int(c_pos[0] + c_size[1])), dtype=np.uint8)
-            matt[:self.image.shape[0], :self.image.shape[1]] = self.image[:matt.shape[0], :matt.shape[1]]
-            # NOTE: you definitely could use something other than qt as your export plugin, I found that the default was some 14x slower
-            io.imsave(fname, matt[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
-                                                int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
+        if any(c_pos < 0):
+            x = -int(c_pos[0]) if c_pos[0] < 0 else 0
+            y = -int(c_pos[1]) if c_pos[1] < 0 else 0
+            matt = np.zeros((int(c_size[1]), int(c_size[0])), dtype=np.uint8)
+            off_x = int(c_pos[0]) if c_pos[0] > 0 else 0
+            off_y = int(c_pos[1]) if c_pos[1] > 0 else 0
+
+            matt[y:, x:] = self.image[off_y:int(c_size[1]) - y + off_y,off_x:int(c_size[0]) - x + off_x]
+            # see note
+            io.imsave(fname, matt, plugin='qt')
         else:
-            io.imsave(fname, self.image[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
-                                                int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
+            if int(c_pos[1] + c_size[0]) > self.image.shape[0] or int(c_pos[0] + c_size[1]) > self.image.shape[1]:
+                print(f'Oversized crop, adding black border to {fname}')
+                matt = np.zeros((int(c_pos[1] + c_size[0]), int(c_pos[0] + c_size[1])), dtype=np.uint8)
+                matt[:self.image.shape[0], :self.image.shape[1]] = self.image[:matt.shape[0], :matt.shape[1]]
+                # see note
+                io.imsave(fname, matt[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
+                                                    int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
+            else:
+                io.imsave(fname, self.image[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
+                                                    int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
             
 
 if __name__ == "__main__":
