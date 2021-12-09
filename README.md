@@ -1,8 +1,13 @@
 ## To Do:
+- Change from qt imsave backend, for some reason it's very slow
 - Add support for removing anchors
 - Move locking ROI to toolbar
 - Move aligning to toolbar
+- Universal pointer selection (like I can press 2 anywhere in the application and it changes the selector to 2)
+- Just better cropping code (in ImagePlot, already TODOed)
 
+### Maybe Do:
+- Add a separate window for managing all of the filenames
 
 ---
 ---

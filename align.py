@@ -11,15 +11,17 @@ import numpy as np
 import csv
 import sys
 import time
-import pdb
+import logging
 from dataclasses import dataclass
 
-folder = 'images/2530/'
-TRACE_PATH = None
+logging.basicConfig(filename='align.log', filemode='w', level=logging.DEBUG)
+
+folder = 'images/1-2 HR/1002/'
+TRACE_PATH = f'{folder}trace_new_clean_1002 numbered.png'
 TRACE_PATH_SAVE = None
-RAW_PATH = None
+RAW_PATH = f'{folder}1 2_Al_100nm_0998_F4_1_16bit.tif'
 RAW_PATH_SAVE = None
-PTS_CSV_READ = None
+PTS_CSV_READ = f'{folder}aligned/1_2hr0998_1.csv'
 PTS_CSV_SAVE = None
 
 @dataclass
@@ -35,7 +37,7 @@ class FilePaths:
 paths = FilePaths(TRACE_PATH, TRACE_PATH_SAVE, RAW_PATH, RAW_PATH_SAVE, PTS_CSV_READ, PTS_CSV_SAVE)
 
 def read_csv(csv_fname):
-    print(f'Loading points from {csv_fname}')
+    logging.info(f'Loading points from {csv_fname}')
     c_pos = np.zeros(2)
     c_size = np.zeros(2)
     pts = np.zeros((2, 5, 2))
@@ -58,10 +60,10 @@ def read_csv(csv_fname):
 
 def save_csv(csv_fname):
     if csv_fname is None:
-        print('CSV Points save path not defined')
+        logging.error('CSV Points save path not defined')
         return 0
 
-    print(f'Saving points to {csv_fname}')
+    logging.info(f'Saving points to {csv_fname}')
     pts = np.zeros((2, 5, 2))
     for i in range(2):
         pts[i,:,:] = image_plot[i].points
@@ -77,7 +79,7 @@ def save_csv(csv_fname):
 # TODO: re-implement all of these functions as toolbar functions
 def key_press(event):
     # Locks ROI
-    elif event.text() == 'm':
+    if event.text() == 'm':
         image_plot[2].roi.translatable = (image_plot[2].roi.translatable != True)
 
     # Does transformation with selected points
@@ -93,17 +95,16 @@ def key_press(event):
         
         ref_pts = pts[0, overlapping]
         trans_pts = pts[1, overlapping]
-        print(image_plot[0].image.shape[::-1])
 
         if np.sum(overlapping) > 2:
-            print(f"Using {np.sum(overlapping)} point alignment...")
+            logging.info(f"Using {np.sum(overlapping)} point alignment...")
             align = transform_5pt(image_plot[1].image, ref_pts, trans_pts, \
                     image_plot[0].image.shape[::-1])
         elif np.sum(overlapping) == 2:
-            print("Warning: Using 2 point alignment (suboptimal)...")
+            logging.warning("Warning: Using 2 point alignment (suboptimal)...")
             align = transform_2pt(image_plot[1].image, ref_pts, trans_pts, image_plot[0].image.shape[::-1])
         elif np.sum(overlapping) < 2:
-            print("Not enough valid points selected")
+            logging.error("Not enough valid points selected")
             return 0
 
         # The fused image on the right:
@@ -158,6 +159,7 @@ class Window(QMainWindow):
 
         menu = self.menuBar()
         fileMenu = menu.addMenu("&File")
+        editMenu = menu.addMenu("&Edit")
 
         openRawAction = QAction("&Open Image", self)
         openRawAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_O))
@@ -187,6 +189,11 @@ class Window(QMainWindow):
         savePointsAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_P))
         savePointsAction.triggered.connect(self.savePoints)
         fileMenu.addAction(savePointsAction)
+
+        clearPointsAction = QAction("&Clear Points", self)
+        clearPointsAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_X))
+        clearPointsAction.triggered.connect(self.clearPoints)
+        editMenu.addAction(clearPointsAction)
 
     def setLayout(self):
         self.central_win.setLayout(self.layout)
@@ -223,7 +230,8 @@ class Window(QMainWindow):
                 if paths.PTS_CSV_SAVE is None:
                     paths.PTS_CSV_SAVE = f'{select[:-4]}.csv'
 
-        image_plot[2].saveImage(paths.RAW_PATH_SAVE, c_pos, c_size)
+        image_plot[2].saveImage(paths.RAW_PATH_SAVE)
+#        image_plot[2].saveImage(paths.RAW_PATH_SAVE, c_pos, c_size)
 
     def saveTrace(self):
         [c_pos, c_size] = image_plot[2].getCrop()
@@ -231,14 +239,22 @@ class Window(QMainWindow):
             if select := QFileDialog.getSaveFileName(win, 'Save Aligned Tracing', '.')[0]:
                 paths.TRACE_PATH_SAVE = select
             
+#        image_plot[0].saveImage(paths.TRACE_PATH_SAVE, c_pos, c_size)
         image_plot[0].saveImage(paths.TRACE_PATH_SAVE, c_pos, c_size)
 
     def savePoints(self):
         if paths.PTS_CSV_SAVE is None:
-            if select := QFileDialog.getSaveFileName(win, 'Save file', '.')[0]:
+            if select := QFileDialog.getSaveFileName(win, 'Save Points CSV', '.')[0]:
                 paths.PTS_CSV_SAVE = select
         
         save_csv(paths.PTS_CSV_SAVE)
+
+    def clearPoints(self):
+        image_plot[0].points = np.zeros((5,2))
+        image_plot[0].setPoints()
+        image_plot[1].points = np.zeros((5,2))
+        image_plot[1].setPoints()
+        
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 app = QApplication([])
@@ -251,6 +267,12 @@ if paths.TRACE_PATH is not None:
 
 if paths.RAW_PATH is not None:
     image_plot[1].setImage(paths.RAW_PATH)
+
+if paths.PTS_CSV_READ is not None:
+    [pts, c_pos, c_size] = read_csv(paths.PTS_CSV_READ)
+    for i in [0, 1]:
+        image_plot[i].points = pts[i, :, :]
+        image_plot[i].setPoints()
 
 # You can access points by accessing image_plot1.points
 win.show()
