@@ -231,7 +231,6 @@ class Window(QMainWindow):
                     paths.PTS_CSV_SAVE = f'{select[:-4]}.csv'
 
         image_plot[2].saveImage(paths.RAW_PATH_SAVE)
-#        image_plot[2].saveImage(paths.RAW_PATH_SAVE, c_pos, c_size)
 
     def saveTrace(self):
         [c_pos, c_size] = image_plot[2].getCrop()
@@ -239,7 +238,6 @@ class Window(QMainWindow):
             if select := QFileDialog.getSaveFileName(win, 'Save Aligned Tracing', '.')[0]:
                 paths.TRACE_PATH_SAVE = select
             
-#        image_plot[0].saveImage(paths.TRACE_PATH_SAVE, c_pos, c_size)
         image_plot[0].saveImage(paths.TRACE_PATH_SAVE, c_pos, c_size)
 
     def savePoints(self):

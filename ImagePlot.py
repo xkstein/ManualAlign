@@ -6,6 +6,7 @@ import pyqtgraph as pg
 from skimage import io, transform, color
 import numpy as np
 from dataclasses import dataclass
+import logging
 
 @dataclass
 class MouseEvent:
@@ -25,7 +26,7 @@ class ImagePlot(pg.GraphicsLayoutWidget):
     sigKeyPress = pyqtSignal(object)
     color_dict = {'r':(255,0,0), 'g':(0,255,0),'b':(0,0,255),'p':(255,0,255),'y':(255,255,0)}
 
-    def __init__(self, use_roi=False, movable_roi=True):
+    def __init__(self, use_roi=False, movable_roi=False):
         self.pti = 0
         self.image = np.array([])
 
@@ -143,9 +144,10 @@ class ImagePlot(pg.GraphicsLayoutWidget):
             [c_pos, c_size] = self.getCrop()
 
         if fname is None:
-            print('Image name not defined, cannot save')
+            logging.error('Image name not defined, cannot save')
             return 0
         if any(c_pos < 0):
+            logging.info(f'Oversized crop (and negative roi), adding black border to {fname}')
             x = -int(c_pos[0]) if c_pos[0] < 0 else 0
             y = -int(c_pos[1]) if c_pos[1] < 0 else 0
             matt = np.zeros((int(c_size[1]), int(c_size[0])), dtype=np.uint8)
@@ -157,7 +159,7 @@ class ImagePlot(pg.GraphicsLayoutWidget):
             io.imsave(fname, matt, plugin='qt')
         else:
             if int(c_pos[1] + c_size[0]) > self.image.shape[0] or int(c_pos[0] + c_size[1]) > self.image.shape[1]:
-                print(f'Oversized crop, adding black border to {fname}')
+                logging.info(f'Oversized crop, adding black border to {fname}')
                 matt = np.zeros((int(c_pos[1] + c_size[0]), int(c_pos[0] + c_size[1])), dtype=np.uint8)
                 matt[:self.image.shape[0], :self.image.shape[1]] = self.image[:matt.shape[0], :matt.shape[1]]
                 # see note
