@@ -10,7 +10,6 @@
 - Add a separate window for managing all of the filenames
 
 ---
----
 # Controls
 | Input | Command |
 | ----- | ------- | 
