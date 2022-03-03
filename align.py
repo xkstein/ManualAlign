@@ -16,13 +16,13 @@ from dataclasses import dataclass
 
 logging.basicConfig(filename='align.log', filemode='w', level=logging.DEBUG)
 
-folder = 'images/1-2 HR/1002/'
-TRACE_PATH = f'{folder}trace_new_clean_1002 numbered.png'
-TRACE_PATH_SAVE = None
-RAW_PATH = f'{folder}1 2_Al_100nm_0998_F4_1_16bit.tif'
-RAW_PATH_SAVE = None
-PTS_CSV_READ = f'{folder}aligned/1_2hr0998_1.csv'
-PTS_CSV_SAVE = None
+# folder = 'images/1-2 HR/1002/'
+# TRACE_PATH = f'{folder}trace_new_clean_1002 numbered.png'
+# TRACE_PATH_SAVE = None
+# RAW_PATH = f'{folder}1 2_Al_100nm_0998_F4_1_16bit.tif'
+# RAW_PATH_SAVE = None
+# PTS_CSV_READ = f'{folder}aligned/1_2hr0998_1.csv'
+# PTS_CSV_SAVE = None
 
 @dataclass
 class FilePaths:
@@ -34,7 +34,8 @@ class FilePaths:
     PTS_CSV_READ: str = None
     PTS_CSV_SAVE: str = None
 
-paths = FilePaths(TRACE_PATH, TRACE_PATH_SAVE, RAW_PATH, RAW_PATH_SAVE, PTS_CSV_READ, PTS_CSV_SAVE)
+#paths = FilePaths(TRACE_PATH, TRACE_PATH_SAVE, RAW_PATH, RAW_PATH_SAVE, PTS_CSV_READ, PTS_CSV_SAVE)
+paths = FilePaths()
 
 def read_csv(csv_fname):
     logging.info(f'Loading points from {csv_fname}')
