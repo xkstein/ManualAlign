@@ -16,14 +16,6 @@ from dataclasses import dataclass
 
 logging.basicConfig(filename='align.log', filemode='w', level=logging.DEBUG)
 
-folder = 'images/1-2 HR/1002/'
-TRACE_PATH = f'{folder}trace_new_clean_1002 numbered.png'
-TRACE_PATH_SAVE = None
-RAW_PATH = f'{folder}1 2_Al_100nm_0998_F4_1_16bit.tif'
-RAW_PATH_SAVE = None
-PTS_CSV_READ = f'{folder}aligned/1_2hr0998_1.csv'
-PTS_CSV_SAVE = None
-
 @dataclass
 class FilePaths:
     # I need an adult
@@ -34,7 +26,8 @@ class FilePaths:
     PTS_CSV_READ: str = None
     PTS_CSV_SAVE: str = None
 
-paths = FilePaths(TRACE_PATH, TRACE_PATH_SAVE, RAW_PATH, RAW_PATH_SAVE, PTS_CSV_READ, PTS_CSV_SAVE)
+# Set default values here
+paths = FilePaths()
 
 def read_csv(csv_fname):
     logging.info(f'Loading points from {csv_fname}')
@@ -142,17 +135,6 @@ class Window(QMainWindow):
         plot.sigKeyPress.connect(key_press)
         self.layout.addWidget(plot, 0, 1, 4, 2)
         self.image_plot.append(plot)
-#        self.layout.setColumnStretch(1, 0)
-        #self.layout = QHBoxLayout()
-
-        '''
-        # Setting up the plot file name selector thing
-        label1 = QLabel("Name")
-        edit1 = QLineEdit()
-        self.form = QFormLayout()
-        self.form.addRow(label1, edit1)
-        self.layout.addLayout(self.form, 3,1,2,1)
-        '''
 
         self.central_win.setLayout(self.layout)
         self.setCentralWidget(self.central_win)
@@ -260,11 +242,8 @@ win = Window()
 
 image_plot = win.image_plot
 
-if paths.TRACE_PATH is not None:
-    image_plot[0].setImage(paths.TRACE_PATH)
-
-if paths.RAW_PATH is not None:
-    image_plot[1].setImage(paths.RAW_PATH)
+image_plot[0].setImage(paths.TRACE_PATH)
+image_plot[1].setImage(paths.RAW_PATH)
 
 if paths.PTS_CSV_READ is not None:
     [pts, c_pos, c_size] = read_csv(paths.PTS_CSV_READ)

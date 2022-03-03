@@ -60,6 +60,9 @@ class ImagePlot(pg.GraphicsLayoutWidget):
 
     def setImage(self, image, size=None, disp=True):
         # pg.ImageItem.__init__ method takes input as an image array
+        if not image:
+            return
+
         if isinstance(image, str):
             img = io.imread(image)
             if len(img.shape) > 2:
