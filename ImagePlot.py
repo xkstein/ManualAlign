@@ -8,25 +8,15 @@ import numpy as np
 from dataclasses import dataclass
 import logging
 
-@dataclass
-class MouseEvent:
-    # button: 1 - lclick, 2 - rclick, 3 - ?, 4 - mclick
-    # db_click: Whether or not click was a doubleclick
-    # source: index of KeyPressWindow that the click was in
-    button: int
-    x: int
-    y: int
-    db_click: bool = None
-    source: int = -1
-
 pg.setConfigOption('background', 'k')
 pg.setConfigOption('foreground', 'w')
 
 class ImagePlot(pg.GraphicsLayoutWidget):
     sigKeyPress = pyqtSignal(object)
-    color_dict = {'r':(255,0,0), 'g':(0,255,0),'b':(0,0,255),'p':(255,0,255),'y':(255,255,0)}
+    color_dict = { 'r':(255,0,0), 'g':(0,255,0), 'b':(0,0,255),
+                   'p':(255,0,255), 'y':(255,255,0) }
 
-    def __init__(self, use_roi=False, movable_roi=False):
+    def __init__(self, use_roi=False, select_pts=True):
         self.pti = 0
         self.image = np.array([])
 
@@ -51,16 +41,16 @@ class ImagePlot(pg.GraphicsLayoutWidget):
         self.p1.addItem(self.scatterItem)
 
         self.use_roi = use_roi
+        self.select_pts = select_pts
         if self.use_roi:
-            self.roi = pg.RectROI(pos=(0,0), size=(100,100), movable=movable_roi, aspectLocked=True)
+            self.roi = pg.RectROI(pos=(0,0), size=(100,100), aspectLocked=True)
             self.roi.setPen((255,0,0))
             self.roi.setZValue(20)
             self.p1.addItem(self.roi)
 
-
     def setImage(self, image, size=None, disp=True):
         # pg.ImageItem.__init__ method takes input as an image array
-        if not image:
+        if image is None:
             return
 
         if isinstance(image, str):
@@ -109,11 +99,14 @@ class ImagePlot(pg.GraphicsLayoutWidget):
         self.p1.addItem(self.image_item)
 
     def keyPressEvent(self, event):
-        if event.text().isdigit() and int(event.text()) <= 5 and int(event.text()) > 0:
-            self.pti = int(event.text()) - 1
+        if event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
+            self.points[self.pti, :] = [0, 0]
+            self.setPoints()
         self.sigKeyPress.emit(event)
 
     def mouseDoubleClickEvent(self, event):
+        if not self.select_pts:
+            return
         point = self.p1.vb.mapSceneToView(event.pos()) # get the point clicked
         # Get pixel position of the mouse click
         x, y = int(point.x()), int(point.y())
@@ -140,8 +133,8 @@ class ImagePlot(pg.GraphicsLayoutWidget):
     # TODO:
     # Figure out a better way to do all of this cropping, obviously this is pretty suboptimal
     # NOTE:
-    # You definitely could use something other than qt as your export plugin, I found that the 
-    # default was some 14x slower
+    # You definitely could use something other than qt as your export plugin, 
+    # I found that the default was some 14x slower
     def saveImage(self, fname, c_pos=None, c_size=None):
         if c_pos is None or c_size is None:
             [c_pos, c_size] = self.getCrop()

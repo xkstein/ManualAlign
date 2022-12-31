@@ -69,42 +69,6 @@ def save_csv(csv_fname):
         for pt in range(5):
             csv_writer.writerow([pts[0, pt, 0], pts[0, pt, 1], pts[1, pt, 0], pts[1, pt, 1]])
 
-# TODO: re-implement all of these functions as toolbar functions
-def key_press(event):
-    # Locks ROI
-    if event.text() == 'm':
-        image_plot[2].roi.translatable = (image_plot[2].roi.translatable != True)
-
-    # Does transformation with selected points
-    elif event.text() == 'a':
-        pts = np.zeros((2, 5, 2))
-        for i in range(2):
-            pts[i, :, :] = image_plot[i].points
-        [c_pos, c_size] = image_plot[2].getCrop()
-
-        non0_pts = (pts != 0)
-        selected_pts = np.logical_or(non0_pts[:,:,0], non0_pts[:,:,1])
-        overlapping = np.logical_and(selected_pts[0], selected_pts[1])
-        
-        ref_pts = pts[0, overlapping]
-        trans_pts = pts[1, overlapping]
-
-        if np.sum(overlapping) > 2:
-            logging.info(f"Using {np.sum(overlapping)} point alignment...")
-            align = transform_5pt(image_plot[1].image, ref_pts, trans_pts, \
-                    image_plot[0].image.shape[::-1])
-        elif np.sum(overlapping) == 2:
-            logging.warning("Warning: Using 2 point alignment (suboptimal)...")
-            align = transform_2pt(image_plot[1].image, ref_pts, trans_pts, image_plot[0].image.shape[::-1])
-        elif np.sum(overlapping) < 2:
-            logging.error("Not enough valid points selected")
-            return 0
-
-        # The fused image on the right:
-        image_plot[2].setImage(align, disp=False)
-        image_plot[2].overlayImage(image_plot[0].image)
-        image_plot[2].roi.setSize(pg.Point(c_size[0], c_size[1]))
-      
 class Window(QMainWindow):
     sigKeyPress = pyqtSignal(object)
     def __init__(self):
@@ -117,22 +81,20 @@ class Window(QMainWindow):
         self.layout.setVerticalSpacing(0)
         self.layout.setHorizontalSpacing(0)
 
-
         # Setting up the image plots
         self.image_plot = []
 
         plot = ImagePlot()
-        plot.sigKeyPress.connect(key_press)
+        plot.sigKeyPress.connect(self.keyPress)
         self.layout.addWidget(plot, 0, 0, 2, 1)
         self.image_plot.append(plot)
 
         plot = ImagePlot()
-        plot.sigKeyPress.connect(key_press)
+        plot.sigKeyPress.connect(self.keyPress)
         self.layout.addWidget(plot, 2, 0, 2, 1)
         self.image_plot.append(plot)
 
-        plot = ImagePlot(use_roi = True)
-        plot.sigKeyPress.connect(key_press)
+        plot = ImagePlot(use_roi=True, select_pts=False)
         self.layout.addWidget(plot, 0, 1, 4, 2)
         self.image_plot.append(plot)
 
@@ -149,6 +111,7 @@ class Window(QMainWindow):
         fileMenu.addAction(openRawAction)
 
         openTraceAction = QAction("&Open Tracing", self)
+        openTraceAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_T))
         openTraceAction.triggered.connect(self.openTrace)
         fileMenu.addAction(openTraceAction)
 
@@ -172,10 +135,27 @@ class Window(QMainWindow):
         savePointsAction.triggered.connect(self.savePoints)
         fileMenu.addAction(savePointsAction)
 
+        alignAction = QAction("&Align", self)
+        alignAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_A))
+        alignAction.triggered.connect(self.align)
+        editMenu.addAction(alignAction)
+
         clearPointsAction = QAction("&Clear Points", self)
         clearPointsAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_X))
         clearPointsAction.triggered.connect(self.clearPoints)
         editMenu.addAction(clearPointsAction)
+
+        lockROIAction = QAction("&Lock ROI", self, checkable=True)
+        lockROIAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_M))
+        lockROIAction.triggered.connect(self.lockROI)
+        editMenu.addAction(lockROIAction)
+
+    def keyPress(self, event):
+        if ( event.text().isdigit() and int(event.text()) <= 5 
+                                    and int(event.text()) > 0 ):
+            pti = int(event.text()) - 1
+            for plot in self.image_plot:
+                plot.pti = pti
 
     def setLayout(self):
         self.central_win.setLayout(self.layout)
@@ -212,7 +192,12 @@ class Window(QMainWindow):
                 if paths.PTS_CSV_SAVE is None:
                     paths.PTS_CSV_SAVE = f'{select[:-4]}.csv'
 
-        image_plot[2].saveImage(paths.RAW_PATH_SAVE)
+        try:
+            image_plot[2].saveImage(paths.RAW_PATH_SAVE)
+        except Exception as e:
+            paths.RAW_PATH_SAVE = None
+            paths.PTS_CSV_SAVE = None
+            raise e
 
     def saveTrace(self):
         [c_pos, c_size] = image_plot[2].getCrop()
@@ -229,12 +214,45 @@ class Window(QMainWindow):
         
         save_csv(paths.PTS_CSV_SAVE)
 
-    def clearPoints(self):
-        image_plot[0].points = np.zeros((5,2))
-        image_plot[0].setPoints()
-        image_plot[1].points = np.zeros((5,2))
-        image_plot[1].setPoints()
+    def align(self):
+        pts = np.zeros((2, 5, 2))
+        for i in range(2):
+            pts[i, :, :] = self.image_plot[i].points
+        [c_pos, c_size] = self.image_plot[2].getCrop()
+
+        non0_pts = (pts != 0)
+        selected_pts = np.logical_or(non0_pts[:,:,0], non0_pts[:,:,1])
+        overlapping = np.logical_and(selected_pts[0], selected_pts[1])
         
+        ref_pts = pts[0, overlapping]
+        trans_pts = pts[1, overlapping]
+
+        if np.sum(overlapping) > 2:
+            logging.info(f"Using {np.sum(overlapping)} point alignment...")
+            align = transform_5pt(self.image_plot[1].image, ref_pts, trans_pts,
+                                  self.image_plot[0].image.shape[::-1])
+        elif np.sum(overlapping) == 2:
+            logging.warning("Warning: Using 2 point alignment (suboptimal)...")
+            align = transform_2pt(self.image_plot[1].image, ref_pts, trans_pts,
+                                  self.image_plot[0].image.shape[::-1])
+        elif np.sum(overlapping) < 2:
+            logging.error("Not enough valid points selected")
+            return 0
+
+        # The fused image on the right:
+        self.image_plot[2].setImage(align, disp=False)
+        self.image_plot[2].overlayImage(image_plot[0].image)
+        self.image_plot[2].roi.setSize(pg.Point(c_size[0], c_size[1]))
+
+
+    def clearPoints(self):
+        self.image_plot[0].points = np.zeros((5,2))
+        self.image_plot[0].setPoints()
+        self.image_plot[1].points = np.zeros((5,2))
+        self.image_plot[1].setPoints()
+        
+    def lockROI(self, e):
+        self.image_plot[2].roi.translatable = ( e != True )
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
 app = QApplication([])

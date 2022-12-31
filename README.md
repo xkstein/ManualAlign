@@ -1,26 +1,18 @@
-## To Do:
-- Change from qt imsave backend, for some reason it's very slow
-- Add support for removing anchors
-- Move locking ROI to toolbar
-- Move aligning to toolbar
-- Universal pointer selection (like I can press 2 anywhere in the application and it changes the selector to 2)
-- Just better cropping code (in ImagePlot, already TODOed)
-
-### Maybe Do:
-- Add a separate window for managing all of the filenames
-
 ---
+
 # Controls
+
 | Input | Command |
 | ----- | ------- | 
 | `DOUBLE CLICK` | Select point |
 | `#1-5`         | Select marker index[^1] |
 | `CMD-l`        | Load points (reads from `PTS_CSV_READ`) |
 | `CMD-p`        | Save current point (saved to `PTS_CSV_SAVE`) |
-| `a`            | Compile and align images with selected points |
+| `CMD-a`        | Compile and align images with selected points |
 | `CMD-o`        | Open a new raw image to edit[^2] |
 | `CMD-s`        | Save roi of aligned images |
-| `m`            | Toggles movablility of roi (the little red square that shows up in the third window) |
+
+**NOTE**: This list isn't comprehensive, there are other actions and keybinds which can be found in the file and edit menu items
 
 [^1]: **NOTE**: you have to left-click on the plot that you want to make this change in each time, its sort of an unfortunate thing, deciding on how to fix it
 [^2]: **NOTE**: if you change the raw image, you also will need to set where to save points and where to save the aligned image
@@ -56,4 +48,10 @@ In 1 you need to change/set the region of the crop, but in mode 2 you don't want
 **Credit** to [this](https://stackoverflow.com/a/69878947/17338565) stack overflow post for helping in a major way.
 
 [^3]: Side note, your cropping is based off the hand tracing, and it is saved and loaded with the csv points.
+
+---
+
+## To Do:
+- Change from qt imsave backend (to suppress FutureWarning) <= the other options where very slow on my machine so this will take some investigating
+- Just better cropping code (in ImagePlot, already TODOed)
 
