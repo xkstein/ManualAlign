@@ -158,6 +158,11 @@ class Window(QMainWindow):
         lockROIAction.triggered.connect(self.lockROI)
         editMenu.addAction(lockROIAction)
 
+        self.autoSavePointsAction = QAction("&Autosave Points", self, \
+                                        checkable=True)
+        self.autoSavePointsAction.setChecked(True)
+        editMenu.addAction(self.autoSavePointsAction)
+
     def keyPress(self, event):
         if ( event.text().isdigit() and int(event.text()) <= 5 
                                     and int(event.text()) > 0 ):
@@ -225,6 +230,8 @@ class Window(QMainWindow):
         try:
             image_plot[2].saveImage(paths.RAW_PATH_SAVE, c_pos=c_pos, \
                                     c_size=c_size)
+            if self.autoSavePointsAction.isChecked():
+                self.savePoints()
         except Exception as e:
             paths.RAW_PATH_SAVE = None
             paths.PTS_CSV_SAVE = None
