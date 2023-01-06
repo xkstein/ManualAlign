@@ -14,6 +14,7 @@ import time
 import logging
 from dataclasses import dataclass
 from functools import partialmethod
+from pathlib import Path
 
 logging.basicConfig(filename='align.log', filemode='w', level=logging.DEBUG)
 
@@ -75,6 +76,8 @@ class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
         self.setWindowTitle("Manual Align")
+        self.file_dialog = QFileDialog()
+        self.file_dialog.setFileMode(QFileDialog.AnyFile)
 
         self.central_win = QWidget()
         self.layout = QGridLayout()
@@ -167,20 +170,34 @@ class Window(QMainWindow):
         self.setCentralWidget(self.central_win)
 
     def openRaw(self):
-        if select := QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]:
+        self.file_dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        self.file_dialog.setNameFilter("Images (*.png *.xpm *.jpg *.tif)")
+        if self.file_dialog.exec_():
+            select = self.file_dialog.selectedFiles()[0]
+            self.file_dialog.setDirectory(str(Path(select).parent))
+
             paths.RAW_PATH = select
             image_plot[1].setImage(paths.RAW_PATH)
             paths.PTS_CSV_SAVE = None
             paths.RAW_PATH_SAVE = None
 
     def openReference(self):
-        if select := QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]:
+        self.file_dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        self.file_dialog.setNameFilter("Images (*.png *.xpm *.jpg *.tif)")
+        if self.file_dialog.exec_():
+            select = self.file_dialog.selectedFiles()[0]
+            self.file_dialog.setDirectory(str(Path(select).parent))
+
             paths.REFERENCE_PATH = select
             image_plot[0].setImage(paths.REFERENCE_PATH)
             paths.REFERENCE_PATH_SAVE = None
 
     def openPoints(self):
-        if select := QFileDialog.getOpenFileName(win, 'Open file', '.', "CSV File(*.csv)")[0]:
+        self.file_dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        self.file_dialog.setNameFilter("CSV File (*.csv)")
+        if self.file_dialog.exec_():
+            select = self.file_dialog.selectedFiles()[0]
+
             paths.PTS_CSV_READ = select
             [pts, c_pos, c_size] = read_csv(paths.PTS_CSV_READ)
             for i in [0, 1]:
@@ -191,7 +208,12 @@ class Window(QMainWindow):
 
     def saveAlignedImage(self, crop: bool):
         if paths.RAW_PATH_SAVE is None:
-            if select := QFileDialog.getSaveFileName(win, 'Save Aligned Image', '.')[0]:
+            self.file_dialog.setAcceptMode(QFileDialog.AcceptSave)
+            self.file_dialog.setNameFilter("Images (*.png *.xpm *.jpg *.tif)")
+            if self.file_dialog.exec_():
+                select = self.file_dialog.selectedFiles()[0]
+                self.file_dialog.setDirectory(str(Path(select).parent))
+
                 paths.RAW_PATH_SAVE = select
                 if paths.PTS_CSV_SAVE is None:
                     paths.PTS_CSV_SAVE = f'{select[:-4]}.csv'
@@ -214,14 +236,23 @@ class Window(QMainWindow):
     def saveReference(self):
         [c_pos, c_size] = image_plot[2].getCrop()
         if paths.REFERENCE_PATH_SAVE is None:
-            if select := QFileDialog.getSaveFileName(win, 'Save Aligned Reference Image', '.')[0]:
+            self.file_dialog.setAcceptMode(QFileDialog.AcceptSave)
+            self.file_dialog.setNameFilter("Images (*.png *.xpm *.jpg *.tif)")
+            if self.file_dialog.exec_():
+                select = self.file_dialog.selectedFiles()[0]
+                self.file_dialog.setDirectory(str(Path(select).parent))
+
                 paths.REFERENCE_PATH_SAVE = select
             
         image_plot[0].saveImage(paths.REFERENCE_PATH_SAVE, c_pos, c_size)
 
     def savePoints(self):
         if paths.PTS_CSV_SAVE is None:
-            if select := QFileDialog.getSaveFileName(win, 'Save Points CSV', '.')[0]:
+            self.file_dialog.setAcceptMode(QFileDialog.AcceptSave)
+            self.file_dialog.setNameFilter("CSV File (*.csv)")
+            if self.file_dialog.exec_():
+                select = self.file_dialog.selectedFiles()[0]
+
                 paths.PTS_CSV_SAVE = select
         
         save_csv(paths.PTS_CSV_SAVE)
