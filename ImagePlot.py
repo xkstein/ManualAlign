@@ -1,5 +1,4 @@
 import sys
-#from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout
 import pyqtgraph as pg
@@ -102,6 +101,8 @@ class ImagePlot(pg.GraphicsLayoutWidget):
         if event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
             self.points[self.pti, :] = [0, 0]
             self.setPoints()
+        if event.key() == Qt.Key_H:
+            self.p1.autoRange()
         self.sigKeyPress.emit(event)
 
     def mouseDoubleClickEvent(self, event):
@@ -137,7 +138,8 @@ class ImagePlot(pg.GraphicsLayoutWidget):
     # I found that the default was some 14x slower
     def saveImage(self, fname, c_pos=None, c_size=None):
         if c_pos is None or c_size is None:
-            [c_pos, c_size] = self.getCrop()
+            io.imsave(fname, self.image, plugin='qt')
+            return
 
         if fname is None:
             logging.error('Image name not defined, cannot save')
@@ -159,11 +161,13 @@ class ImagePlot(pg.GraphicsLayoutWidget):
                 matt = np.zeros((int(c_pos[1] + c_size[0]), int(c_pos[0] + c_size[1])), dtype=np.uint8)
                 matt[:self.image.shape[0], :self.image.shape[1]] = self.image[:matt.shape[0], :matt.shape[1]]
                 # see note
-                io.imsave(fname, matt[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
-                                                    int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
+                io.imsave(fname, \
+                        matt[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
+                        int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
             else:
-                io.imsave(fname, self.image[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
-                                                    int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
+                io.imsave(fname, \
+                        self.image[int(c_pos[1]):int(c_pos[1]+c_size[0]), \
+                        int(c_pos[0]):int(c_pos[0]+c_size[1])], plugin='qt')
             
 
 if __name__ == "__main__":

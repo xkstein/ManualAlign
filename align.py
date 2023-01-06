@@ -13,14 +13,15 @@ import sys
 import time
 import logging
 from dataclasses import dataclass
+from functools import partialmethod
 
 logging.basicConfig(filename='align.log', filemode='w', level=logging.DEBUG)
 
 @dataclass
 class FilePaths:
     # I need an adult
-    TRACE_PATH: str = None
-    TRACE_PATH_SAVE: str = None
+    REFERENCE_PATH: str = None
+    REFERENCE_PATH_SAVE: str = None
     RAW_PATH: str = None
     RAW_PATH_SAVE: str = None
     PTS_CSV_READ: str = None
@@ -110,25 +111,29 @@ class Window(QMainWindow):
         openRawAction.triggered.connect(self.openRaw)
         fileMenu.addAction(openRawAction)
 
-        openTraceAction = QAction("&Open Tracing", self)
-        openTraceAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_T))
-        openTraceAction.triggered.connect(self.openTrace)
-        fileMenu.addAction(openTraceAction)
+        openReferenceAction = QAction("&Open Reference Image", self)
+        openReferenceAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_R))
+        openReferenceAction.triggered.connect(self.openReference)
+        fileMenu.addAction(openReferenceAction)
 
         openPointsAction = QAction("&Open Points CSV", self)
         openPointsAction.triggered.connect(self.openPoints)
         openPointsAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_L))
         fileMenu.addAction(openPointsAction)
 
-        saveAction = QAction("&Save Aligned Image...", self)
-        saveAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_S))
-        saveAction.triggered.connect(self.saveImage)
-        fileMenu.addAction(saveAction)
+        saveFullAction = QAction("&Save Aligned Image...", self)
+        saveFullAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_S))
+        saveFullAction.triggered.connect(self.saveFullImage)
+        fileMenu.addAction(saveFullAction)
 
-        saveTraceAction = QAction("&Save Trace Aligned Image...", self)
-#        saveTraceAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_T))
-        saveTraceAction.triggered.connect(self.saveTrace)
-        fileMenu.addAction(saveTraceAction)
+        saveCropAction = QAction("&Save Cropped Aligned Image...", self)
+        saveCropAction.setShortcut(QKeySequence(Qt.CTRL + Qt.SHIFT + Qt.Key_S))
+        saveCropAction.triggered.connect(self.saveCropImage)
+        fileMenu.addAction(saveCropAction)
+
+        saveReferenceAction = QAction("&Save Cropped Reference Image...", self)
+        saveReferenceAction.triggered.connect(self.saveReference)
+        fileMenu.addAction(saveReferenceAction)
 
         savePointsAction = QAction("&Save Points CSV...", self)
         savePointsAction.setShortcut(QKeySequence(Qt.CTRL + Qt.Key_P))
@@ -168,11 +173,11 @@ class Window(QMainWindow):
             paths.PTS_CSV_SAVE = None
             paths.RAW_PATH_SAVE = None
 
-    def openTrace(self):
+    def openReference(self):
         if select := QFileDialog.getOpenFileName(win, 'Open file', '.', "Image files (*.jpg *.gif *.png *.tif)")[0]:
-            paths.TRACE_PATH = select
-            image_plot[0].setImage(paths.TRACE_PATH)
-            paths.TRACE_PATH_SAVE = None
+            paths.REFERENCE_PATH = select
+            image_plot[0].setImage(paths.REFERENCE_PATH)
+            paths.REFERENCE_PATH_SAVE = None
 
     def openPoints(self):
         if select := QFileDialog.getOpenFileName(win, 'Open file', '.', "CSV File(*.csv)")[0]:
@@ -183,29 +188,36 @@ class Window(QMainWindow):
                 image_plot[i].setPoints()
             image_plot[2].roi.setPos(c_pos[0], c_pos[1], update=False)
             image_plot[2].roi.setSize(c_size)
-    
-    def saveImage(self):
-        [c_pos, c_size] = image_plot[2].getCrop()
+
+    def saveAlignedImage(self, crop: bool):
         if paths.RAW_PATH_SAVE is None:
             if select := QFileDialog.getSaveFileName(win, 'Save Aligned Image', '.')[0]:
                 paths.RAW_PATH_SAVE = select
                 if paths.PTS_CSV_SAVE is None:
                     paths.PTS_CSV_SAVE = f'{select[:-4]}.csv'
 
+        [c_pos, c_size] = [None, None]
+        if crop:
+            [c_pos, c_size] = image_plot[2].getCrop()
+
         try:
-            image_plot[2].saveImage(paths.RAW_PATH_SAVE)
+            image_plot[2].saveImage(paths.RAW_PATH_SAVE, c_pos=c_pos, \
+                                    c_size=c_size)
         except Exception as e:
             paths.RAW_PATH_SAVE = None
             paths.PTS_CSV_SAVE = None
             raise e
 
-    def saveTrace(self):
+    saveFullImage = partialmethod(saveAlignedImage, False)
+    saveCropImage = partialmethod(saveAlignedImage, True)
+
+    def saveReference(self):
         [c_pos, c_size] = image_plot[2].getCrop()
-        if paths.TRACE_PATH_SAVE is None:
-            if select := QFileDialog.getSaveFileName(win, 'Save Aligned Tracing', '.')[0]:
-                paths.TRACE_PATH_SAVE = select
+        if paths.REFERENCE_PATH_SAVE is None:
+            if select := QFileDialog.getSaveFileName(win, 'Save Aligned Reference Image', '.')[0]:
+                paths.REFERENCE_PATH_SAVE = select
             
-        image_plot[0].saveImage(paths.TRACE_PATH_SAVE, c_pos, c_size)
+        image_plot[0].saveImage(paths.REFERENCE_PATH_SAVE, c_pos, c_size)
 
     def savePoints(self):
         if paths.PTS_CSV_SAVE is None:
@@ -260,7 +272,7 @@ win = Window()
 
 image_plot = win.image_plot
 
-image_plot[0].setImage(paths.TRACE_PATH)
+image_plot[0].setImage(paths.REFERENCE_PATH)
 image_plot[1].setImage(paths.RAW_PATH)
 
 if paths.PTS_CSV_READ is not None:

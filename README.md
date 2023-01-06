@@ -6,11 +6,7 @@
 | ----- | ------- | 
 | `DOUBLE CLICK` | Select point |
 | `#1-5`         | Select marker index[^1] |
-| `CMD-l`        | Load points (reads from `PTS_CSV_READ`) |
-| `CMD-p`        | Save current point (saved to `PTS_CSV_SAVE`) |
-| `CMD-a`        | Compile and align images with selected points |
-| `CMD-o`        | Open a new raw image to edit[^2] |
-| `CMD-s`        | Save roi of aligned images |
+| `h`            | "Home" the selected image |
 
 **NOTE**: This list isn't comprehensive, there are other actions and keybinds which can be found in the file and edit menu items
 
