@@ -1,3 +1,9 @@
+# Manual Align
+
+This is a tool for manually aligning two images from 2-5 selected points
+
+---
+
 # Installation
 
 Start by cloning this repo, either by just downloading it here or by running (in your shell):
@@ -24,17 +30,32 @@ python align.py
 
 to open the application!
 
-# Controls
+---
+
+# Usage
+
+This program aligns an input image to a reference image. To do this,
+1. Load both an image and a reference image (commands can be found under `File` in the toolbar)
+2. Select 2-5 mutual points between them
+3. Align them by selecting the `Align` option under `Edit` in the toolbar. 
+
+The resulting image can either be cropped and exported (using the red square) or exported in full by selecting `Save Cropped Aligned Image` or `Save Aligned Image`.[^2]
+
+## Controls
 | Input | Command |
 | ----- | ------- | 
 | `DOUBLE CLICK` | Select point |
-| `#1-5`         | Select marker index[^1] |
+| `#1-5`         | Select marker index |
 | `h`            | "Home" the selected image |
+| `Backspace`    | Deletes current selected point |
 
 **NOTE**: This list isn't comprehensive, there are other actions and keybinds which can be found in the file and edit menu items
 
-[^1]: **NOTE**: you have to left-click on the plot that you want to make this change in each time, its sort of an unfortunate thing, deciding on how to fix it
-[^2]: **NOTE**: if you change the raw image, you also will need to set where to save points and where to save the aligned image
+## Functions
+
+Found under `Edit` in the toolbar:
+- `Autosave Points` (Toggle) - If set, csv points are automatically saved when an image is saved.
+- `Lock ROI` (Toggle) - Immobilizes the ROI (the red square which is used for cropping)
 
 ---
 
@@ -47,30 +68,22 @@ to open the application!
 
 `RAW_PATH` - Path to the location of the raw image (that you're aligning to the tracing)
 
-`RAW_PATH_SAVE` - Where you want to save the aligned raw image
+`RAW_PATH_SAVE` - Where you want to save the aligned raw image[^1]
 
 `PTS_CSV_READ` - Where to read the alignment points from
 
-`PTS_CSV_SAVE` - Where to save alignment points
+`PTS_CSV_SAVE` - Where to save alignment points[^1]
 
----
 
-# Workflow
-There are basically two modes to this application (if you're aliging a set of images to one tracing that you want to all line up): 
-1. Aligning an image AND its tracing
-2. Aligning an image TO its tracing. 
-
-In 1 you need to change/set the region of the crop, but in mode 2 you don't want to touch the crop (so your images align)[^3]. If you're aligning a set of images to one tracing and you want them all to line up (like if you're doing some n-channel image process), you should only select the points on the tracing once. So after you align the first image, you should save those points and then load those when you align the next image (if you press `o`, you can open the next image)
-
----
-
-**Credit** to [this](https://stackoverflow.com/a/69878947/17338565) stack overflow post for helping in a major way.
-
-[^3]: Side note, your cropping is based off the hand tracing, and it is saved and loaded with the csv points.
+[^1]: **NOTE**: if you change the raw image, you also will need to set where to save points and where to save the aligned image
 
 ---
 
 ## To Do:
 - Change from qt imsave backend (to suppress FutureWarning) <= the other options where very slow on my machine so this will take some investigating
 - Just better cropping code (in ImagePlot, already TODOed)
+---
 
+**Credit** to [this](https://stackoverflow.com/a/69878947/17338565) stack overflow post for helping in a major way.
+
+[^2]: **NOTE**: your cropping is relative to the reference image, and it is saved and loaded with the csv points.
